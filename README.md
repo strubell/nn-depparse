@@ -11,9 +11,9 @@ Requirements
 - optim
 
 Setup
-------
-------
+-----
 1. Set up environment variables. For example, from the root directory of this project on blake:
+
   ```
   export NNDEPPARSE_ROOT=`pwd`
   export DATA_DIR=/iesl/canvas/strubell/data/
@@ -28,20 +28,22 @@ Setup
   ```
   ./bin/all-data-processing.sh config/chen-ptb.conf
   ```
-  
-5. Train the parser:
+
+Running
+----
+1. Train the parser:
 
   ```
   ./bin/train-parser.sh config/chen-ptb.conf
   ```
   
-6. Evaluate the parser (accuracy and speed):
+2. Evaluate the parser (accuracy and speed):
  
   ```
   ./bin/parse-fast.sh config/chen-ptb.conf
   ```
   
-7. Tune hyperparameters (assumes a GPU machine and uses all of its GPUs):
+3. Tune hyperparameters (assumes a GPU machine and uses all of its GPUs):
 
   ```
   ./bin/tune-hyperparams.sh config/chen-ptb.conf
