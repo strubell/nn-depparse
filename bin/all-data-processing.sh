@@ -14,7 +14,7 @@ echo "" && \
 
 # Treebank -> feats processing
 echo "Converting treebank to decision features..." && \
-command="$NNDEPPARSE_ROOT/bin/get-parse-decisions.sh $train_file $dev_file $test_file $decisions_output_dir --pos=$pos --lowercase=$lowercase --maps-dir=$intmaps_output_dir" && \
+command="$NNDEPPARSE_ROOT/bin/get-parse-decisions.sh $train_file $dev_file $test_file $decisions_output_dir --pos=$pos --lowercase=$lowercase --maps-dir=$intmaps_output_dir --embeddings=$embedding_file" && \
 echo $command && \
 eval $command && \
 echo "" && \

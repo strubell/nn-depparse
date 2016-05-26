@@ -15,10 +15,6 @@ function ParseState:__init(stack, input, reducedIds, sentence, pos_features)
     self._sentence = sentence
     self.headIndices = torch.Tensor(self.parseSentenceLength):fill(0)
     self.arcLabels = torch.Tensor(self.parseSentenceLength):fill(0)
-    self.posTags = torch.Tensor(self.parseSentenceLength):fill(Constants.NONE_POS)
-    for i=2,self.parseSentenceLength do
-        self.posTags[i] = sentence[i-1][6]
-    end
 
     self.leftmostDeps = torch.Tensor(self.parseSentenceLength):fill(0)
     self.rightmostDeps = torch.Tensor(self.parseSentenceLength):fill(0)
@@ -49,8 +45,6 @@ function ParseState:print()
     print(self:mk_string_tensor(self.leftmostDeps, " "))
     print("rightmost deps: ")
     print(self:mk_string_tensor(self.rightmostDeps, " "))
-    print("pos tags: ")
-    print(self:mk_string_tensor(self.posTags, " "))
 end
 
 function ParseState:mk_string(t, sep)
@@ -81,34 +75,6 @@ function ParseState:sentence(index)
     else
         return Constants.NULL[1]
     end
-end
-
-function ParseState:posTag(index)
-    if(index == 1) then
-        return Constants.ROOT_POS
-    elseif (index > 1 and index <= self.parseSentenceLength) then
-        return self.posTags[index]
-    else
-        return Constants.NULL_POS
-    end
-end
-
--- todo should change maybe
---function ParseState:pos_features(index)
---    if(index == 1) then
---        return Constants.ROOT_POS_FEATS
---    elseif (index > 1 and index <= self.parseSentenceLength) then
---        return self.features[index-1]
---    else
---        return Constants.NULL_POS_FEATS
---    end
---end
-
---function ParseState:goldHeads() return self.sentence.goldHeads end
---function ParseState:goldLabels() return self.sentence.goldLabels end
-
-function ParseState:setPos(tokenIndex, label)
-    if(tokenIndex <= self.parseSentenceLength) then self.posTags[tokenIndex] = label end
 end
 
 function ParseState:setHead(tokenIndex, headIndex, label)

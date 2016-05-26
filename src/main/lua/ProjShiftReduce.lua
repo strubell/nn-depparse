@@ -18,7 +18,7 @@ function ProjShiftReduce:__init(net, num_word_feats, num_pos_feats, num_label_fe
     self.int2decision = torch.zeros(num_decisions, 3)
     for line in io.lines(decision2int) do
         if(line ~= "") then
-            local decision, leftOrRightOrNo, shiftOrReduceOrPass, label = string.match(line, "([^\t]+)\t([^ ]+) ([^ ]+) ([^ ]+)")
+            local leftOrRightOrNo, shiftOrReduceOrPass, label, decision = string.match(line, "([^ ]+) ([^ ]+) ([^ ]+)\t([^\t]+)")
             self.int2decision[decision][1] = leftOrRightOrNo
             self.int2decision[decision][2] = shiftOrReduceOrPass
             self.int2decision[decision][3] = label
@@ -40,27 +40,24 @@ function ProjShiftReduce:parse(sentence)
             -- make feats for prediction here
             local feats = self:compute_features_chen(state)
             local decision = self:predict(feats)
-            if((state.input <= state.parseSentenceLength or state.stack > 1)) then
-                if(state.stack < 1) then self:shift(state) end
-                local leftOrRightOrNo, shiftOrReduceOrPass, label = self:parse_decision(decision)
-                if(leftOrRightOrNo ~= 0 and (state.input ~= state.parseSentenceLength+1 or not (shiftOrReduceOrPass == Constants.SHIFT and leftOrRightOrNo == Constants.NO))) then
-                try {
-                    function()
-                        self:transition(state, leftOrRightOrNo, shiftOrReduceOrPass, label)
-                    end,
-                    catch {
-                        function(error)
-                            print('caught error: ' .. error)
-                            print("decision", leftOrRightOrNo, shiftOrReduceOrPass, label)
-                            state:print()
-                            state.stack = 1; state.input = state.parseSentenceLength+1
-                        end
-                    }
+            local leftOrRightOrNo, shiftOrReduceOrPass, label = self:parse_decision(decision)
+            if(leftOrRightOrNo ~= 0 and (state.input ~= state.parseSentenceLength+1 or not (shiftOrReduceOrPass == Constants.SHIFT and leftOrRightOrNo == Constants.NO))) then
+            try {
+                function()
+                    self:transition(state, leftOrRightOrNo, shiftOrReduceOrPass, label)
+                end,
+                catch {
+                    function(error)
+                        print('caught error: ' .. error)
+                        print("decision", leftOrRightOrNo, shiftOrReduceOrPass, label)
+                        state:print()
+                        state.stack = 1; state.input = state.parseSentenceLength+1
+                    end
                 }
-                else
-                    state.stack = 1
-                    state.input = state.input + 1
-                end
+            }
+            else
+                state.stack = 1
+                state.input = state.input + 1
             end
         end
     end

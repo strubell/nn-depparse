@@ -7,7 +7,6 @@ require 'CmdArgs'
 require 'ProjShiftReduce'
 require 'ParseState'
 require 'ParserConstants'
-require 'Print'
 
 local params = CmdArgs:parse(arg)
 if params.gpuid >= 0 then require 'cunn'; cutorch.manualSeed(0); cutorch.setDevice(params.gpuid + 1) else require 'nn' end
@@ -81,13 +80,6 @@ local opt_config = {
     momentum = params.momentum, learningRateDecay = params.delta
 }
 local opt_state = {}
-
---local function make_projection_layer(in_dim, out_dim)
---    local projection_layer =
---    params.recurrent and nn.Recurrent(out_dim, nn.Linear(in_dim, out_dim), nn.Linear(out_dim, out_dim), nn.Sigmoid(), 9999)
---        or nn.Linear(in_dim, out_dim)
---    return projection_layer
---end
 
 local function make_lookup_table(vocab_size, embedding_size, fb)
     local lookup_table
@@ -192,7 +184,6 @@ local function evaluate(data, net, criterion)
         local sent_correct = pred_labels:eq(gold_labels):sum()
         token_correct = token_correct + sent_correct
         token_total = token_total + pred_labels:size(1)
-        net:forget()
     end
     return token_correct/token_total
 end
@@ -291,8 +282,6 @@ local function test_feats(feature_net, class_net, sent_data, decision_data, pars
         local num_gold_decisions = decisions['decisions']:size(1)
         local state = ParseState(1, 2, {}, sentence)
         local j = 1
---        local max_input = state.parseSentenceLength
---        if(params.parser == "standard-psr" or params.parser == "joint-standard-psr") then max_input = max_input + 1 end
         while (state.input <= state.parseSentenceLength or (state.stack > 1 and state.stack <= state.parseSentenceLength)) do
             print(state.stack, state.input, state.parseSentenceLength, j)
             if(state.stack < 1) then
@@ -483,43 +472,12 @@ local function get_batch_data(train_decisions)
     local shape_feats = {}
     local suffix_feats = {}
 
---    local decisions_clusters = {}
---    local word_feats_clusters = {}
---    local pos_feats_clusters = {}
---    local label_feats_clusters = {}
---    local shape_feats_clusters = {}
---    local suffix_feats_clusters = {}
---
---    -- map from classes to clusters, and initialize a subtable for each cluster for each feature type
---    local cluster_map = {}
---    local cluster_label_map = {}
---    for i=1,num_clusters do
---        local cluster = clusters[i]
---        decisions_clusters[i] = {}
---        word_feats_clusters[i] = {}
---        pos_feats_clusters[i] = {}
---        label_feats_clusters[i] = {}
---        shape_feats_clusters[i] = {}
---        suffix_feats_clusters[i] = {}
---        cluster_label_map[i] = {}
---        for j=1,cluster:size(1) do
---            cluster_map[cluster[j]] = i
---            cluster_label_map[i][cluster[j]] = j
---        end
---    end
-
     -- load in all the examples
     for i = 1, #train_decisions do
         table.insert(decisions, train_decisions[i].decisions)
         table.insert(word_feats, train_decisions[i].word_feats)
         table.insert(pos_feats, train_decisions[i].pos_feats)
         table.insert(label_feats, train_decisions[i].label_feats)
-        if(params.shape) then
-            table.insert(shape_feats, train_decisions[i].shape_feats)
-        end
-        if(params.suffix > 0) then
-            table.insert(suffix_feats, train_decisions[i].suffix_feats)
-        end
     end
 
     -- flatten all the examples into tensors
@@ -527,29 +485,6 @@ local function get_batch_data(train_decisions)
     local word_tensor = to_cuda(nn.JoinTable(1)(word_feats))
     local pos_tensor = to_cuda(nn.JoinTable(1)(pos_feats))
     local label_tensor = to_cuda(nn.JoinTable(1)(label_feats))
-
---    local decisions_tensors = {}
---    local word_tensors = {}
---    local pos_tensors = {}
---    local label_tensors = {}
---    local shape_tensors = {}
---    local suffix_tensors = {}
---    for i=1,num_clusters do
---        local cluster_indices = {}
---        local mapped_decisions = {}
---        for j=1,clusters[i]:size(1) do
---            local indices_table = torch.find(decisions_tensor, clusters[i][j]) -- jth class in ith cluster
---            if(#indices_table > 0) then
---                table.insert(cluster_indices, torch.Tensor(indices_table))
---                table.insert(mapped_decisions, torch.Tensor(#indices_table):fill(j))
---            end
---        end
---        local cluster_indices_tensor = nn.JoinTable(1)(cluster_indices):long()
---        decisions_tensors[i] = nn.JoinTable(1)(mapped_decisions) --decisions_tensor:index(1,cluster_indices_tensor)
---        word_tensors[i] = word_tensor:index(1,cluster_indices_tensor)
---        pos_tensors[i] = pos_tensor:index(1,cluster_indices_tensor)
---        label_tensors[i] = label_tensor:index(1,cluster_indices_tensor)
---    end
 
     return decisions_tensor, word_tensor, pos_tensor, label_tensor
 end
@@ -563,15 +498,15 @@ local function gen_batches(train_decisions, batch_size)
     -- divide each cluster into batches
     local batches = {}
     local start = 1
-    local num_examples = decisions_tensors:size(1)
+    local num_examples = decisions_tensor:size(1)
     local rand_order = torch.randperm(num_examples):long()
     while(start <= num_examples) do
         local size = math.min(batch_size, num_examples - start + 1)
         local batch_indices = rand_order:narrow(1, start, size)
-        local decision_batch = decisions_tensors:index(1, batch_indices)
-        local word_batch = word_tensors:index(1, batch_indices)
-        local pos_batch = pos_tensors:index(1, batch_indices)
-        local label_batch = label_tensors:index(1, batch_indices)
+        local decision_batch = decisions_tensor:index(1, batch_indices)
+        local word_batch = word_tensor:index(1, batch_indices)
+        local pos_batch = pos_tensor:index(1, batch_indices)
+        local label_batch = label_tensor:index(1, batch_indices)
         table.insert(batches, {data = { word_batch, pos_batch, label_batch }, label = decision_batch})
         start = start + size
     end
