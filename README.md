@@ -1,6 +1,6 @@
 nn-depparse
 ===========
-A neural network dependency parser implemented in Torch.
+A Torch/Scala reimplementation of the neural network dependency parser descibed in [Chen and Manning '14](http://cs.stanford.edu/people/danqi/papers/emnlp2014.pdf).
 
 Requirements
 ------
@@ -28,7 +28,20 @@ Setup
   ```
     ./bin/all-data-processing.sh config/chen-ptb.conf
   ```
-5. Tune hyperparameters (assumes a GPU machine and uses all of its GPUs):
+  
+5. Train the parser:
+
+  ```
+  ./bin/train-parser.sh config/chen-ptb.conf
+  ```
+  
+6. Evaluate the parser (accuracy and speed):
+ 
+  ```
+  ./bin/parse-fast.sh config/chen-ptb.conf
+  ```
+  
+7. Tune hyperparameters (assumes a GPU machine and uses all of its GPUs):
 
   ```
     ./bin/tune-hyperparams.sh config/chen-ptb.conf
