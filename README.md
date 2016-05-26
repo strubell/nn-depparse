@@ -15,8 +15,8 @@ Setup
 ------
 1. Set up environment variables. For example, from the root directory of this project on blake:
   ```
-    export NNDEPPARSE_ROOT=`pwd`
-    export DATA_DIR=/iesl/canvas/strubell/data/
+  export NNDEPPARSE_ROOT=`pwd`
+  export DATA_DIR=/iesl/canvas/strubell/data/
   ```
 
 2. Put a word embeddings file in `$NNDEPPARSE_ROOT/data/embeddings`. The file is expected to contain one embedding per line,
@@ -26,7 +26,7 @@ Setup
 4. Perform all data preprocessing for a given configuration [also compiles]. For example:
 
   ```
-    ./bin/all-data-processing.sh config/chen-ptb.conf
+  ./bin/all-data-processing.sh config/chen-ptb.conf
   ```
   
 5. Train the parser:
@@ -44,7 +44,7 @@ Setup
 7. Tune hyperparameters (assumes a GPU machine and uses all of its GPUs):
 
   ```
-    ./bin/tune-hyperparams.sh config/chen-ptb.conf
+  ./bin/tune-hyperparams.sh config/chen-ptb.conf
   ```
 
 
