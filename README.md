@@ -4,11 +4,11 @@ A Torch/Scala reimplementation of the neural network dependency parser descibed 
 
 Requirements
 ------
-- sbt 1.13.9
-- torch
-- torchx
-- nn
-- optim
+- [sbt 1.13.9](http://www.scala-sbt.org/download.html)
+- [torch](http://torch.ch/)
+- [torchx](https://github.com/nicholas-leonard/torchx)
+- [nn](https://github.com/torch/nn)
+- [optim](https://github.com/torch/optim)
 
 Setup
 -----
