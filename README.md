@@ -65,20 +65,20 @@ Running
 [optional] Luajit hack to allow array-of-size def
 -----
 In `torch-distro/exe/luajit-rocks/luajit-2.1/src/luajit.c`, add the function:
-
-    static int new_sized_table( lua_State *L )
-    {
-        int asize = lua_tointeger( L, 1 );
-        int hsize = lua_tointeger( L, 2 );
-        lua_createtable( L, asize, hsize );
-        return( 1 );
-    }
-
+  ```c
+  static int new_sized_table( lua_State *L )
+  {
+      int asize = lua_tointeger( L, 1 );
+      int hsize = lua_tointeger( L, 2 );
+      lua_createtable( L, asize, hsize );
+      return( 1 );
+  }
+  ```
 in `main`, after `L` is initialized add the lines:
-
-    lua_pushcfunction( L, new_sized_table );
-    lua_setglobal( L, "sized_table" );
-
+  ```c
+  lua_pushcfunction( L, new_sized_table );
+  lua_setglobal( L, "sized_table" );
+  ```
 Reinstall Torch.
 
 
