@@ -1,6 +1,6 @@
 nn-depparse
 ===========
-A Torch/Scala reimplementation of the neural network dependency parser descibed in [Chen and Manning '14](http://cs.stanford.edu/people/danqi/papers/emnlp2014.pdf).
+A Torch/Scala reimplementation of the neural network dependency parser described in [Chen and Manning '14](http://cs.stanford.edu/people/danqi/papers/emnlp2014.pdf).
 
 Requirements
 ------
