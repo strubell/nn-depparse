@@ -444,10 +444,10 @@ local function print_evaluation(net, test_sentences, test_decisions, parser, pun
 
 
     -- for actual parsing
-    local las, uas, pos = evaluate_parse(test_sentences, parser, punct)
-    print(string.format('Test LAS: %2.2f UAS: %2.2f POS: %2.2f', las*100, uas*100, pos*100))
-
-    return las
+--    local las, uas, pos = evaluate_parse(test_sentences, parser, punct)
+--    print(string.format('Test LAS: %2.2f UAS: %2.2f POS: %2.2f', las*100, uas*100, pos*100))
+--
+--    return las
 end
 
 local function test_model(net, test_sentences, test_decisions, parser)
