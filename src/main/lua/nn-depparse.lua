@@ -366,16 +366,15 @@ local function test_feats(net, sent_data, decision_data, parser, punct)
 
         local gold_labels = sentence:select(2,3)
         local gold_heads = sentence:select(2,4)
-        local gold_pos = sentence:select(2, 5)
-        local stacked_pos = sentence:select(2, 6)
+        local gold_pos = sentence:select(2,5)
         local non_punct = to_cuda(torch.Tensor(sentence:size(1)):zero())
         for i = 1,sentence:size(1) do
             if(not punct[gold_pos[i]]) then non_punct[i] = 1 end
         end
 
-        print("pred", "", "gold", "", "a_pos", "g_pos", "s_pos", "punct")
+        print("pred", "", "gold", "", "a_pos", "g_pos", "punct")
         for j=1,sentence:size(1) do
-            print(pred_heads[j], pred_labels[j], gold_heads[j], gold_labels[j], pred_pos[j], gold_pos[j], stacked_pos[j], non_punct[j])
+            print(pred_heads[j], pred_labels[j], gold_heads[j], gold_labels[j], pred_pos[j], gold_pos[j], non_punct[j])
         end
         print("\n")
 
