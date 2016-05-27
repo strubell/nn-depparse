@@ -15,6 +15,7 @@ class ParseOpts extends cc.factorie.util.DefaultCmdOptions {
   val reps = new CmdOption("reps", 1, "BOOLEAN", "Number of times to evaluate test set (for timing experiments)")
   val posTagger = new CmdOption("postagger", "", "STRING", "pos tagger to use for timing (empty is none)")
   val testPortion = new CmdOption("test-portion", 1.0, "DOUBLE", "Portion of test sentences to use")
+  val numToPrecompute = new CmdOption("precompute-words", -1, "INT", "Number of word embeddings to precompute")
 }
 
 object Parse extends App {
@@ -24,7 +25,7 @@ object Parse extends App {
   val featureFunc = FeatureFunctionsFast.computeChenFeatures _
 
   // load model parameters
-  val model = new FeedForwardNN(opts.modelFile.value, featureFunc, 10000)
+  val model = new FeedForwardNN(opts.modelFile.value, featureFunc, opts.numToPrecompute.value)
 
   IntMaps.loadMaps(opts.mapsDir.value, true)
 
