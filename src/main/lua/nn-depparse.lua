@@ -433,29 +433,29 @@ local function serialize_model_hdf5(net)
         local hd5_output = hdf5.open(model_fname, 'w')
 
         -- nn.LookupTable [torch.DoubleTensor of size 34556x50]
-        local word_embeddings = net:get(1):get(1):get(1).weight:double()
+        local word_embeddings = net:get(1):get(1):get(1).weight:float()
 
         -- nn.Linear(900 -> 200) [torch.DoubleTensor of size 200x900]
-        local word_hidden = net:get(1):get(1):get(4).weight:double():transpose(1,2)
-        local word_bias = net:get(1):get(1):get(4).bias:double()
+        local word_hidden = net:get(1):get(1):get(4).weight:float():transpose(1,2)
+        local word_bias = net:get(1):get(1):get(4).bias:float()
 
         -- nn.LookupTable [torch.DoubleTensor of size 47x50]
-        local pos_embeddings = net:get(1):get(2):get(1).weight:double()
+        local pos_embeddings = net:get(1):get(2):get(1).weight:float()
 
         -- nn.Linear(900 -> 200) [torch.DoubleTensor of size 200x900]
-        local pos_hidden = net:get(1):get(2):get(4).weight:double():transpose(1,2)
-        local pos_bias = net:get(1):get(2):get(4).bias:double()
+        local pos_hidden = net:get(1):get(2):get(4).weight:float():transpose(1,2)
+        local pos_bias = net:get(1):get(2):get(4).bias:float()
 
         -- nn.LookupTable [torch.DoubleTensor of size 45x50]
-        local label_embeddings = net:get(1):get(3):get(1).weight:double()
+        local label_embeddings = net:get(1):get(3):get(1).weight:float()
 
         -- nn.Linear(600 -> 200) [torch.DoubleTensor of size 200x600]
-        local label_hidden = net:get(1):get(3):get(4).weight:double():transpose(1,2)
-        local label_bias = net:get(1):get(3):get(4).bias:double()
+        local label_hidden = net:get(1):get(3):get(4).weight:float():transpose(1,2)
+        local label_bias = net:get(1):get(3):get(4).bias:float()
 
         -- nn.Linear(200 -> 80) [torch.DoubleTensor of size 80x200]
-        local output_layer = net:get(4).weight:double():transpose(1,2)
-        local output_bias = net:get(4).bias:double()
+        local output_layer = net:get(4).weight:float():transpose(1,2)
+        local output_bias = net:get(4).bias:float()
 
         hd5_output:write("word_embeddings", word_embeddings)
         hd5_output:write("label_embeddings", label_embeddings)
