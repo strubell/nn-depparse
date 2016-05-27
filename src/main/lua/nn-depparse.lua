@@ -255,7 +255,7 @@ local function test_feats(net, sent_data, decision_data, parser, punct)
         local num_gold_decisions = decisions['decisions']:size(1)
         local state = ParseState(1, 2, {}, sentence)
         local j = 1
-        while (state.input <= state.parseSentenceLength or state.stack > 1) do
+        while j < 10 do--(state.input <= state.parseSentenceLength or state.stack > 1) do
             print(state.stack, state.input, state.parseSentenceLength, j)
             if(state.stack < 1) then parser:shift(state)
             else
