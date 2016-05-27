@@ -32,15 +32,14 @@ object MapSentsToInts extends App {
 
   /* Lua is 1-indexed; start counters at 1 */
   IntMaps.wordToIntMap("<OOV>") = 1
+  IntMaps.wordToIntMap(ParserConstants.NULL_STRING) = 2
+  IntMaps.wordToIntMap(ParserConstants.ROOT_STRING) = 3
 
   // these have no OOV
   IntMaps.posToIntMap(ParserConstants.NULL_STRING) = 1
   IntMaps.posToIntMap(ParserConstants.ROOT_STRING) = 2
 
   IntMaps.labelToIntMap(ParserConstants.NULL_STRING) = 1
-
-  IntMaps.wordToIntMap(ParserConstants.NULL_STRING) = 2
-  IntMaps.wordToIntMap(ParserConstants.ROOT_STRING) = 3
 
   var wordCounter = IntMaps.wordToIntMap.size + 1
   var posCounter = IntMaps.posToIntMap.size + 1
@@ -50,7 +49,6 @@ object MapSentsToInts extends App {
 
   val dataFnames = if(opts.dataFileFile.value) io.Source.fromFile(opts.dataFilename.value).getLines().toSeq else Seq(opts.dataFilename.value)
   val dataOutput = new PrintWriter(opts.outputDir.value + "/" + opts.dataOutputFile.value, "utf-8")
-
 
   dataFnames.foreach { fname =>
     val docs = LoadWSJStanfordDeps.fromFilename(fname, loadPos = AutoLabel)
