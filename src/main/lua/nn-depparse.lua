@@ -130,7 +130,7 @@ local function build_net()
             inputs:add(build_embedding_lookup_table(labels_per_example, params.label_dim, label_vocab_size, '', params.embedding_dropout, params.hidden_dim))
         end
 
-        local net = nn.Sequential()
+        net = nn.Sequential()
         net:add(inputs)
         if not params.concat_embeddings then
             net:add(nn.CAddTable())
@@ -549,7 +549,7 @@ local function train_model(net, criterion, train_decisions, dev_sentences, dev_d
     print(string.format("Using batchsize %d", batchsize))
 
     local batches = gen_batches(train_decisions, batchsize)
-    local decisions_tensors, word_tensors, pos_tensors, label_tensors = get_batch_data(train_decisions)
+--    local decisions_tensors, word_tensors, pos_tensors, label_tensors = get_batch_data(train_decisions)
 
     local last_accuracy = 0.0
     local best_acc = 0.0
