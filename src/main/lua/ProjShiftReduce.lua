@@ -14,7 +14,7 @@ function ProjShiftReduce:__init(net, num_word_feats, num_pos_feats, num_label_fe
     self.num_pos_feats = num_pos_feats
     self.num_label_feats = num_label_feats
     self.num_decisions = num_decisions
-    self.all_label_indices = torch.range(1,self.num_decisions):view(1,-1)
+--    self.all_label_indices = torch.range(1,self.num_decisions):view(1,-1)
     self.int2decision = torch.zeros(num_decisions, 3)
     for line in io.lines(decision2int) do
         if(line ~= "") then
