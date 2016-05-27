@@ -65,9 +65,9 @@ function ParseState:mk_string_tensor(tensor, sep)
 end
 
 function ParseState:sentence(index)
-    if(index == 1) then
-        return Constants.ROOT[1]
-    elseif (index > 1 and index <= self.parseSentenceLength) then
+--    if(index == 1) then
+--        return Constants.ROOT[1]
+    if (index > 1 and index <= self.parseSentenceLength) then
         return self._sentence[index-1]
     else
         return Constants.NULL[1]
