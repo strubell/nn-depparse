@@ -24,7 +24,7 @@ object Parse extends App {
   val featureFunc = FeatureFunctionsFast.computeChenFeatures _
 
   // load model parameters
-  val model = new FeedForwardNN(opts.modelFile.value, featureFunc)
+  val model = new FeedForwardNN(opts.modelFile.value, featureFunc, 10000)
 
   IntMaps.loadMaps(opts.mapsDir.value, true)
 

@@ -40,7 +40,6 @@ class FeedForwardNN(modelFile: String, featureFunc: (ParseState, Array[Int], Arr
   val wordDomainSize = wordEmbeddings.length
   val labelDomainSize = labelEmbeddings.length
 
-
   val wordEmbeddingSize = wordEmbeddings(0).length
   val posEmbeddingSize = posEmbeddings(0).length
   val labelEmbeddingSize = labelEmbeddings(0).length
@@ -183,23 +182,17 @@ class FeedForwardNN(modelFile: String, featureFunc: (ParseState, Array[Int], Arr
     // compute features
     featureFunc(state, wordIntFeats, posIntFeats, labelIntFeats)
 
-//    println(s"feats: ${wordIntFeats.sum} ${posIntFeats.sum} ${labelIntFeats.sum}")
-
-    val wordOutput = accumulatePrecomputedWithBias(wordIntFeats, wordPrecomputed, wordBias)
-//      if(topKPrecompute == -1)
-//        accumulatePrecomputedWithBias(wordIntFeats, wordPrecomputed, wordBias)
-//      else
-//        accumulatePrecomputedPartialWithBias(wordIntFeats, wordPrecomputed, wordBias)
+    val wordOutput =
+      if(topKPrecompute == -1)
+        accumulatePrecomputedWithBias(wordIntFeats, wordPrecomputed, wordBias)
+      else
+        accumulatePrecomputedPartialWithBias(wordIntFeats, wordPrecomputed, wordBias)
 
     val posOutput = accumulatePrecomputedWithBias(posIntFeats, posPrecomputed, posBias)
 
     val labelOutput = accumulatePrecomputedWithBias(labelIntFeats, labelPrecomputed, labelBias)
 
-//    println(s"word: ${wordOutput.oneNorm} pos: ${posOutput.oneNorm} label: ${labelOutput.oneNorm}")
-
     val combined = add(wordOutput, posOutput, labelOutput)
-
-//    println(s"add: ${combined.oneNorm}")
 
     val scores = leftMultiplyReluWithBias(outputLayer, combined, outputBias)
 
