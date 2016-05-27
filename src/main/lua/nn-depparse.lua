@@ -119,7 +119,6 @@ local function build_net()
         for key, val in pairs(opt_state) do if (torch.type(val) == 'torch.DoubleTensor') then opt_state[key] = to_cuda(val) end; end
     else
         -- create the 3 lookup tables for words, pos, and labels
-        -- a bunch of gross stuff is added to deal with reshaping and if any are not used
         local inputs = nn.ParallelTable()
         if words_per_example > 0 then
             inputs:add(build_embedding_lookup_table(words_per_example, params.word_dim, word_vocab_size, params.load_embeddings, params.embedding_dropout, params.hidden_dim))
@@ -131,29 +130,24 @@ local function build_net()
             inputs:add(build_embedding_lookup_table(labels_per_example, params.label_dim, label_vocab_size, '', params.embedding_dropout, params.hidden_dim))
         end
 
-        local feature_net = nn.Sequential()
-        feature_net:add(inputs)
+        local net = nn.Sequential()
+        net:add(inputs)
         if not params.concat_embeddings then
-            feature_net:add(nn.CAddTable())
+            net:add(nn.CAddTable())
         else
-            feature_net:add(nn.JoinTable(2))
-                :add(nn.Reshape(in_dim))
-                :add(nn.Linear(in_dim, params.hidden_dim))
+            net:add(nn.JoinTable(2)):add(nn.Reshape(in_dim)):add(nn.Linear(in_dim, params.hidden_dim))
         end
 
-        feature_net:add(nn.ReLU())
+        net:add(nn.ReLU())
 
         for i = 2, params.hidden_layers do
-            feature_net:add(nn.Linear(params.hidden_dim, params.hidden_dim))
-            if params.bias ~= 0 then feature_net:add(nn.Add(params.hidden_dim, params.bias)) end
-            feature_net:add(nn.ReLU())
+            net:add(nn.Linear(params.hidden_dim, params.hidden_dim))
+            net:add(nn.ReLU())
         end
 
-        local class_net = nn.Sequential():add(nn.Linear(params.hidden_dim, decision_domain_size))
-        if params.hidden_dropout > 0.0 then class_net:add(nn.Dropout(params.hidden_dropout)) end
-        class_net:add(nn.LogSoftMax())
-
-        net = nn.Sequential():add(feature_net):add(class_net)
+        net:add(nn.Linear(params.hidden_dim, decision_domain_size))
+        if params.hidden_dropout > 0.0 then net:add(nn.Dropout(params.hidden_dropout)) end
+        net:add(nn.LogSoftMax())
     end
 
     -- criterion
@@ -167,18 +161,18 @@ local function build_net()
 end
 
 --- Evaluate ---
-local function predict(example, net, criterion)
+local function predict(example, net)
     local pred = net:forward(example)
     local max_scores, max_labels = pred:max(2)
     return max_labels
 end
 
-local function evaluate(data, net, criterion)
+local function evaluate(data, net)
     local token_correct = 0.0
     local token_total = 0.0
     for i=1,#data do
         local example = { to_cuda(data[i].word_feats), to_cuda(data[i].pos_feats), to_cuda(data[i].label_feats) }
-        local pred_labels = predict(example, net, criterion)
+        local pred_labels = predict(example, net)
         pred_labels = to_cuda(pred_labels)
         local gold_labels = to_cuda(data[i].decisions:long())
         local sent_correct = pred_labels:eq(gold_labels):sum()
@@ -196,9 +190,6 @@ local function evaluate_parse(data, parser, punct)
     local total = 0.0
     local pos_correct = 0.0
     local pos_total = 0.0
-    local pos_confusion = torch.Tensor(pos_vocab_size, pos_vocab_size):zero()
-    local label_confusion = torch.Tensor(label_vocab_size, label_vocab_size):zero()
-    local decision_confusion = torch.Tensor(decision_domain_size, decision_domain_size):zero()
     for i=1,#data do
         local sentence = data[i]
         local pred_heads, pred_labels = parser:parse(sentence, params.feats)
@@ -213,20 +204,10 @@ local function evaluate_parse(data, parser, punct)
             if(not punct[gold_pos[i]]) then non_punct[i] = 1 end
         end
 
-        -- pos accuracy, confusion
+        -- pos accuracy
         local pos_correct_elems = to_cuda(pred_pos:eq(gold_pos))
         pos_correct = pos_correct + pos_correct_elems:sum()
         pos_total = pos_total + sentence:size(1)
-        for i = 1,sentence:size(1) do
-            pos_confusion[gold_pos[i]][pred_pos[i]] = pos_confusion[gold_pos[i]][pred_pos[i]] + 1
-        end
-
-        -- label confusion
-        for i = 1,sentence:size(1) do
-            if(pred_labels[i] ~= 0) then
-                label_confusion[gold_labels[i]][pred_labels[i]] = label_confusion[gold_labels[i]][pred_labels[i]] + 1
-            end
-        end
 
         local sent_label_correct = to_cuda(pred_labels:eq(gold_labels):double())
         local sent_head_correct = to_cuda(pred_heads:eq(gold_heads):double())
@@ -242,224 +223,224 @@ local function evaluate_parse(data, parser, punct)
         uas_correct = uas_correct + sent_head_correct_nopunct:sum()
         total = total + non_punct:sum() -- only count toks not marked as punctuation
     end
-    return las_correct/total, uas_correct/total, pos_correct/pos_total, pos_confusion, label_confusion, decision_confusion
+    return las_correct/total, uas_correct/total, pos_correct/pos_total
 end
 
-local function test_feats(feature_net, class_net, sent_data, decision_data, parser, punct)
-
-    -- hack to turn of bias in loaded model
---    feature_net.modules[3].bias:fill(0)
-
-    -- for readable debugging output
-    local transition2string = {}
-    for line in io.lines(params.transition2str) do
-        if(line ~= "") then
-            local str, number = string.match(line, "([^\t]+)\t([^ ]+)")
-            transition2string[tonumber(number)] = str
-        end
-    end
-    local label2string = {}
-    for line in io.lines(params.label_map) do
-        if(line ~= "") then
-            local str, number = string.match(line, "([^\t]+)\t([^ ]+)")
-            label2string[tonumber(number)] = str
-        end
-    end
-
-    local pos2string = {}
-    for line in io.lines(params.pos_map) do
-        if(line ~= "") then
-            local str, number = string.match(line, "([^\t]+)\t([^ ]+)")
-            pos2string[tonumber(number)] = str
-        end
-    end
-
---    for i=267,267 do
-    for i=1,1 do
-        local sentence = sent_data[i]
-        local decisions = decision_data[i]
-        print("sent_data len: ", #sent_data, "decisions len: ", #decision_data)
-        local num_gold_decisions = decisions['decisions']:size(1)
-        local state = ParseState(1, 2, {}, sentence)
-        local j = 1
-        while (state.input <= state.parseSentenceLength or (state.stack > 1 and state.stack <= state.parseSentenceLength)) do
-            print(state.stack, state.input, state.parseSentenceLength, j)
-            if(state.stack < 1) then
-                state.stack = state.input
-                state.input = state.input + 1
-            else
-                -- make feats for prediction here
-                local feats
-                if(params.feats == "iesl") then
-                    feats = parser:compute_features_iesl(state)
-                elseif(params.feats == "chen") then
-                    feats = parser:compute_features_chen(state)
-                elseif(params.feats == "bcon") then
-                    feats = parser:compute_features_bcon(state)
-                elseif(params.feats == "bcon2") then
-                    feats = parser:compute_features_bcon2(state)
-                end
-
-                if(#sent_data == #decision_data and j <= num_gold_decisions) then
-                    if(joint_parser) then
-                        local true_d1, true_d2, true_d3, true_d4 = parser:parse_decision(decisions['decisions'][j], 1)
-                        print(string.format("true decision: %s %s %s %s", transition2string[true_d1], transition2string[true_d2], label2string[true_d3], pos2string[true_d4]))
-                    else
-                        print("decision:", decisions['decisions']:size(1))
-                        local true_d1, true_d2, true_d3 = parser:parse_decision(decisions['decisions'][j], 1)
-                        print(string.format("true decision: %s %s %s", transition2string[true_d1], transition2string[true_d2], label2string[true_d3]))
-                    end
-
-                    print("true word feats:")
-                    print(decisions['word_feats'][j])
-                    print("pred word feats:")
-                    print(feats[1])
-
-                    print("true pos feats:")
-                    print(decisions['pos_feats'][j])
-                    print("pred pos feats:")
-                    print(feats[2])
-
-                    print("true label feats:")
-                    print(decisions['label_feats'][j])
-                    print("pred label feats:")
-                    print(feats[3])
-
-                    if(params.shape) then
-                        print("true shape feats:")
-                        print(decisions['shape_feats'][j])
-                        print("pred shape feats:")
-                        print(feats[4])
-                    end
-
-                    if(params.suffix > 0) then
-                        print("true suffix feats:")
-                        print(decisions['suffix_feats'][j])
-                        print("pred suffix feats:")
-                        print(feats[5])
-                    end
-
-                else
---                    print("No gold decision")
-
-                    print("pred word feats:")
-                    print(feats[1])
-
-                    print("pred pos feats:")
-                    print(feats[2])
-
-                    print("pred label feats:")
-                    print(feats[3])
-
-                    if(params.shape) then
-                        print("pred shape feats:")
-                        print(feats[4])
-                    end
-
-                    if(params.sufix > 0) then
-                        print("pred suffix feats:")
-                        print(feats[5])
-                    end
-                end
-
-                local pred = parser.net:forward(feats)
-
---                print("embedded word:")
---                print(feature_net.modules)
-
---                print("add output:")
---                print(feature_net.modules[3].output)
-
---                print("word output:")
---                print(feature_net.modules[1].modules[1].modules[4].output)
-
---                print("word input:")
---                print(feature_net.modules[1].modules[1].modules[1].output)
-
---                                print("label output:")
---                                print(feature_net.modules[1].modules[3].output)
-
---                print("word hidden:")
---                 print(feature_net.modules[1].modules[1].modules[4].weight)
-
---                print("relu:")
---                print(feature_net.modules[4].output)
-
---                print("scores:")
---                print(class_net.modules[1].output)
-                state:print()
-                local _, decision = pred:max(2)
-                for i=1,params.collapsed do
-                    --                local decisionPart = string.match(decision, self.decision_regex)
-                    if((state.input <= state.parseSentenceLength or state.stack > 1)) then
-                        if(state.stack < 1) then parser:shift(state) end
-                        local leftOrRightOrNo, shiftOrReduceOrPass, label = parser:parse_decision(decision[1][1], i)
-                        print(string.format("pred decision: %s %s %s", transition2string[leftOrRightOrNo], transition2string[shiftOrReduceOrPass], label2string[label]))
-                        if(leftOrRightOrNo ~= 0 and (state.input ~= state.parseSentenceLength+1 or not (shiftOrReduceOrPass == Constants.SHIFT and leftOrRightOrNo == Constants.NO))) then
-                            try {
-                                function()
-                                    --                            print("decision:", leftOrRightOrNo, shiftOrReduceOrPass, label)
-                                    parser:transition(state, leftOrRightOrNo, shiftOrReduceOrPass, label)
-                                end,
-                                catch {
-                                    function(error)
-                                        print('caught error: ' .. error)
-                                        print("decision", leftOrRightOrNo, shiftOrReduceOrPass, label)
-                                        state:print()
-                                        state.stack = 1; state.input = state.parseSentenceLength+1
-                                    end
-                                }
-                            }
-                        else
-                            state.stack = 1
-                            state.input = state.input + 1
-                        end
-                    end
-                end
+--local function test_feats(feature_net, class_net, sent_data, decision_data, parser, punct)
 --
+--    -- hack to turn of bias in loaded model
+----    feature_net.modules[3].bias:fill(0)
 --
+--    -- for readable debugging output
+--    local transition2string = {}
+--    for line in io.lines(params.transition2str) do
+--        if(line ~= "") then
+--            local str, number = string.match(line, "([^\t]+)\t([^ ]+)")
+--            transition2string[tonumber(number)] = str
+--        end
+--    end
+--    local label2string = {}
+--    for line in io.lines(params.label_map) do
+--        if(line ~= "") then
+--            local str, number = string.match(line, "([^\t]+)\t([^ ]+)")
+--            label2string[tonumber(number)] = str
+--        end
+--    end
+--
+--    local pos2string = {}
+--    for line in io.lines(params.pos_map) do
+--        if(line ~= "") then
+--            local str, number = string.match(line, "([^\t]+)\t([^ ]+)")
+--            pos2string[tonumber(number)] = str
+--        end
+--    end
+--
+----    for i=267,267 do
+--    for i=1,1 do
+--        local sentence = sent_data[i]
+--        local decisions = decision_data[i]
+--        print("sent_data len: ", #sent_data, "decisions len: ", #decision_data)
+--        local num_gold_decisions = decisions['decisions']:size(1)
+--        local state = ParseState(1, 2, {}, sentence)
+--        local j = 1
+--        while (state.input <= state.parseSentenceLength or (state.stack > 1 and state.stack <= state.parseSentenceLength)) do
+--            print(state.stack, state.input, state.parseSentenceLength, j)
+--            if(state.stack < 1) then
+--                state.stack = state.input
+--                state.input = state.input + 1
+--            else
+--                -- make feats for prediction here
+--                local feats
+--                if(params.feats == "iesl") then
+--                    feats = parser:compute_features_iesl(state)
+--                elseif(params.feats == "chen") then
+--                    feats = parser:compute_features_chen(state)
+--                elseif(params.feats == "bcon") then
+--                    feats = parser:compute_features_bcon(state)
+--                elseif(params.feats == "bcon2") then
+--                    feats = parser:compute_features_bcon2(state)
+--                end
+--
+--                if(#sent_data == #decision_data and j <= num_gold_decisions) then
+--                    if(joint_parser) then
+--                        local true_d1, true_d2, true_d3, true_d4 = parser:parse_decision(decisions['decisions'][j], 1)
+--                        print(string.format("true decision: %s %s %s %s", transition2string[true_d1], transition2string[true_d2], label2string[true_d3], pos2string[true_d4]))
+--                    else
+--                        print("decision:", decisions['decisions']:size(1))
+--                        local true_d1, true_d2, true_d3 = parser:parse_decision(decisions['decisions'][j], 1)
+--                        print(string.format("true decision: %s %s %s", transition2string[true_d1], transition2string[true_d2], label2string[true_d3]))
+--                    end
+--
+--                    print("true word feats:")
+--                    print(decisions['word_feats'][j])
+--                    print("pred word feats:")
+--                    print(feats[1])
+--
+--                    print("true pos feats:")
+--                    print(decisions['pos_feats'][j])
+--                    print("pred pos feats:")
+--                    print(feats[2])
+--
+--                    print("true label feats:")
+--                    print(decisions['label_feats'][j])
+--                    print("pred label feats:")
+--                    print(feats[3])
+--
+--                    if(params.shape) then
+--                        print("true shape feats:")
+--                        print(decisions['shape_feats'][j])
+--                        print("pred shape feats:")
+--                        print(feats[4])
+--                    end
+--
+--                    if(params.suffix > 0) then
+--                        print("true suffix feats:")
+--                        print(decisions['suffix_feats'][j])
+--                        print("pred suffix feats:")
+--                        print(feats[5])
+--                    end
+--
+--                else
+----                    print("No gold decision")
+--
+--                    print("pred word feats:")
+--                    print(feats[1])
+--
+--                    print("pred pos feats:")
+--                    print(feats[2])
+--
+--                    print("pred label feats:")
+--                    print(feats[3])
+--
+--                    if(params.shape) then
+--                        print("pred shape feats:")
+--                        print(feats[4])
+--                    end
+--
+--                    if(params.sufix > 0) then
+--                        print("pred suffix feats:")
+--                        print(feats[5])
+--                    end
+--                end
+--
+--                local pred = parser.net:forward(feats)
+--
+----                print("embedded word:")
+----                print(feature_net.modules)
+--
+----                print("add output:")
+----                print(feature_net.modules[3].output)
+--
+----                print("word output:")
+----                print(feature_net.modules[1].modules[1].modules[4].output)
+--
+----                print("word input:")
+----                print(feature_net.modules[1].modules[1].modules[1].output)
+--
+----                                print("label output:")
+----                                print(feature_net.modules[1].modules[3].output)
+--
+----                print("word hidden:")
+----                 print(feature_net.modules[1].modules[1].modules[4].weight)
+--
+----                print("relu:")
+----                print(feature_net.modules[4].output)
+--
+----                print("scores:")
+----                print(class_net.modules[1].output)
 --                state:print()
---                local leftOrRightOrNo, shiftOrReduceOrPass, label, pos = parser:parse_decision(decision[1][1])
---                try {
---                    function()
---                        parser:transition(state, leftOrRightOrNo, shiftOrReduceOrPass, label, pos)
---                    end,
---                    catch {
---                        function(error)
---                            print('caught error: ' .. error)
---                            print("decision", leftOrRightOrNo, shiftOrReduceOrPass, label, pos)
---                            state:print()
---                            state.stack = 1; state.input = state.parseSentenceLength+1
+--                local _, decision = pred:max(2)
+--                for i=1,params.collapsed do
+--                    --                local decisionPart = string.match(decision, self.decision_regex)
+--                    if((state.input <= state.parseSentenceLength or state.stack > 1)) then
+--                        if(state.stack < 1) then parser:shift(state) end
+--                        local leftOrRightOrNo, shiftOrReduceOrPass, label = parser:parse_decision(decision[1][1], i)
+--                        print(string.format("pred decision: %s %s %s", transition2string[leftOrRightOrNo], transition2string[shiftOrReduceOrPass], label2string[label]))
+--                        if(leftOrRightOrNo ~= 0 and (state.input ~= state.parseSentenceLength+1 or not (shiftOrReduceOrPass == Constants.SHIFT and leftOrRightOrNo == Constants.NO))) then
+--                            try {
+--                                function()
+--                                    --                            print("decision:", leftOrRightOrNo, shiftOrReduceOrPass, label)
+--                                    parser:transition(state, leftOrRightOrNo, shiftOrReduceOrPass, label)
+--                                end,
+--                                catch {
+--                                    function(error)
+--                                        print('caught error: ' .. error)
+--                                        print("decision", leftOrRightOrNo, shiftOrReduceOrPass, label)
+--                                        state:print()
+--                                        state.stack = 1; state.input = state.parseSentenceLength+1
+--                                    end
+--                                }
+--                            }
+--                        else
+--                            state.stack = 1
+--                            state.input = state.input + 1
 --                        end
---                    }
---                }
-            end
-            j = j + 1
-        end
-        local pred_heads = torch.add(state.headIndices:narrow(1, 2, state.parseSentenceLength-1), -2)
-        local pred_labels = state.arcLabels:narrow(1, 2, state.parseSentenceLength-1)
-        local pred_pos = sentence:select(2, 2)
-
-        print(sentence)
-
-        local gold_labels = sentence:select(2,3)
-        local gold_heads = sentence:select(2,4)
-        local gold_pos = sentence:select(2, 5)
-        local stacked_pos = sentence:select(2, 6)
-        local non_punct = to_cuda(torch.Tensor(sentence:size(1)):zero())
-        for i = 1,sentence:size(1) do
-            if(not punct[gold_pos[i]]) then non_punct[i] = 1 end
-        end
-
-        print("pred", "", "gold", "", "a_pos", "g_pos", "s_pos", "punct")
-        for j=1,sentence:size(1) do
-            print(pred_heads[j], pred_labels[j], gold_heads[j], gold_labels[j], pred_pos[j], gold_pos[j], stacked_pos[j], non_punct[j])
-        end
-        print("\n")
-
-    end
-
-end
+--                    end
+--                end
+----
+----
+----                state:print()
+----                local leftOrRightOrNo, shiftOrReduceOrPass, label, pos = parser:parse_decision(decision[1][1])
+----                try {
+----                    function()
+----                        parser:transition(state, leftOrRightOrNo, shiftOrReduceOrPass, label, pos)
+----                    end,
+----                    catch {
+----                        function(error)
+----                            print('caught error: ' .. error)
+----                            print("decision", leftOrRightOrNo, shiftOrReduceOrPass, label, pos)
+----                            state:print()
+----                            state.stack = 1; state.input = state.parseSentenceLength+1
+----                        end
+----                    }
+----                }
+--            end
+--            j = j + 1
+--        end
+--        local pred_heads = torch.add(state.headIndices:narrow(1, 2, state.parseSentenceLength-1), -2)
+--        local pred_labels = state.arcLabels:narrow(1, 2, state.parseSentenceLength-1)
+--        local pred_pos = sentence:select(2, 2)
+--
+--        print(sentence)
+--
+--        local gold_labels = sentence:select(2,3)
+--        local gold_heads = sentence:select(2,4)
+--        local gold_pos = sentence:select(2, 5)
+--        local stacked_pos = sentence:select(2, 6)
+--        local non_punct = to_cuda(torch.Tensor(sentence:size(1)):zero())
+--        for i = 1,sentence:size(1) do
+--            if(not punct[gold_pos[i]]) then non_punct[i] = 1 end
+--        end
+--
+--        print("pred", "", "gold", "", "a_pos", "g_pos", "s_pos", "punct")
+--        for j=1,sentence:size(1) do
+--            print(pred_heads[j], pred_labels[j], gold_heads[j], gold_labels[j], pred_pos[j], gold_pos[j], stacked_pos[j], non_punct[j])
+--        end
+--        print("\n")
+--
+--    end
+--
+--end
 
 local function get_batch_data(train_decisions)
 
@@ -537,16 +518,16 @@ local function load_punct(fname)
     return punct_table
 end
 
-local function print_evaluation(net, criterion, test_sentences, test_decisions, parser, punct, print_confusion)
+local function print_evaluation(net, test_sentences, test_decisions, parser, punct)
     print("Evaluating")
     -- for pretend accuracy
-    local accuracy = evaluate(test_decisions, net, criterion)
+    local accuracy = evaluate(test_decisions, net)
 --    local train_accuracy = evaluate(train, net)
 --    print(string.format('Train decision accuracy: %2.2f', train_accuracy*100))
     print(string.format('Test decision accuracy: %2.2f', accuracy*100))
 
     -- for actual parsing
-    local las, uas, pos, pos_confusion, label_confusion = evaluate_parse(test_sentences, parser, punct)
+    local las, uas, pos = evaluate_parse(test_sentences, parser, punct)
     print(string.format('Test LAS: %2.2f UAS: %2.2f POS: %2.2f', las*100, uas*100, pos*100))
 
     return las
@@ -555,9 +536,9 @@ end
 local function test_model(feature_net, class_net, net, test_sentences, test_decisions, parser)
     local punct = load_punct(params.punct_set)
 
-    test_feats(feature_net, class_net, test_sentences, test_decisions, parser, punct)
+--    test_feats(feature_net, class_net, test_sentences, test_decisions, parser, punct)
 
-    print_evaluation(net, test_sentences, test_decisions, parser, punct, true)
+    print_evaluation(net, test_sentences, test_decisions, parser, punct)
 end
 
 
@@ -628,7 +609,7 @@ local function train_model(net, criterion, train_decisions, dev_sentences, dev_d
         if (epoch % params.evaluate_frequency == 0 or epoch == params.num_epochs) then
             net:evaluate()
 
-            local accuracy = print_evaluation(net, criterion, dev_sentences, dev_decisions, parser, punct, false)
+            local accuracy = print_evaluation(net, dev_sentences, dev_decisions, parser, punct)
 
             -- end training early if accuracy goes down
             if params.stop_early and accuracy < last_accuracy then break else last_accuracy = accuracy end

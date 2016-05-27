@@ -6,7 +6,7 @@ package.path = package.path .. ";src/main/lua/?.lua"
 local ParseState = torch.class('ParseState')
 
 -- constructor
-function ParseState:__init(stack, input, reducedIds, sentence, pos_features)
+function ParseState:__init(stack, input, reducedIds, sentence)
     self.__index = self
     self.parseSentenceLength = sentence:size(1) + 1
     self.stack = stack
@@ -20,9 +20,6 @@ function ParseState:__init(stack, input, reducedIds, sentence, pos_features)
     self.rightmostDeps = torch.Tensor(self.parseSentenceLength):fill(0)
     self.leftmostDeps2 = torch.Tensor(self.parseSentenceLength):fill(0)
     self.rightmostDeps2 = torch.Tensor(self.parseSentenceLength):fill(0)
-
-    -- todo should maybe actually be a root representation
-    self.features = pos_features
 
 end
 
@@ -78,21 +75,19 @@ function ParseState:sentence(index)
 end
 
 function ParseState:setHead(tokenIndex, headIndex, label)
+    self.headIndices[tokenIndex] = headIndex
+    self.arcLabels[tokenIndex] = label
 
-        self.headIndices[tokenIndex] = headIndex
-        self.arcLabels[tokenIndex] = label
-
-        if(headIndex > 0) then
-            if(tokenIndex < self.leftmostDeps[headIndex] or self.leftmostDeps[headIndex] == 0) then
-                self.leftmostDeps2[headIndex] = self.leftmostDeps[headIndex]
-                self.leftmostDeps[headIndex] = tokenIndex
-            end
-            if(tokenIndex > self.rightmostDeps[headIndex] or self.rightmostDeps[headIndex] == 0) then
-                self.rightmostDeps2[headIndex] = self.rightmostDeps[headIndex]
-                self.rightmostDeps[headIndex] = tokenIndex
-            end
+    if(headIndex > 0) then
+        if(tokenIndex < self.leftmostDeps[headIndex] or self.leftmostDeps[headIndex] == 0) then
+            self.leftmostDeps2[headIndex] = self.leftmostDeps[headIndex]
+            self.leftmostDeps[headIndex] = tokenIndex
         end
---    end
+        if(tokenIndex > self.rightmostDeps[headIndex] or self.rightmostDeps[headIndex] == 0) then
+            self.rightmostDeps2[headIndex] = self.rightmostDeps[headIndex]
+            self.rightmostDeps[headIndex] = tokenIndex
+        end
+    end
 end
 
 function ParseState:isDescendantOf(firstIndex, secondIndex)
