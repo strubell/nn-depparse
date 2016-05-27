@@ -93,7 +93,7 @@ object Parse extends App {
     var uasCount = 0.0
     var posCount = 0.0
     var totalTime = 0.0
-    sentences.foreach{ s =>
+    sentences.take(1).foreach{ s =>
       val sentence = new LightweightParseSentence(s, opts.lowercase.value, opts.replaceDigits.value)
       val startTime = System.currentTimeMillis()
       if(opts.posTagger.value != ""){

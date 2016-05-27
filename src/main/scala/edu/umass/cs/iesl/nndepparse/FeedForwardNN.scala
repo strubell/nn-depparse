@@ -82,7 +82,7 @@ class FeedForwardNN(modelFile: String, featureFunc: (ParseState, Array[Int], Arr
   }
 
   // precompute first topKPrecompute word hiddens (or all if topKPrecompute == -1)
-  val topK = if(topKPrecompute <= 0) wordDomainSize else topKPrecompute
+  val topK = if(topKPrecompute < 0) wordDomainSize else topKPrecompute
   val wordPrecomputed = Array.fill(numWordEmbeddings)(new Array[DenseTensor1](topK))
   i = 0
   while(i < numWordEmbeddings){
@@ -183,19 +183,23 @@ class FeedForwardNN(modelFile: String, featureFunc: (ParseState, Array[Int], Arr
     // compute features
     featureFunc(state, wordIntFeats, posIntFeats, labelIntFeats)
 
-//    println(s"wordIntFeats: ${wordIntFeats.mkString(" ")}")
+//    println(s"feats: ${wordIntFeats.sum} ${posIntFeats.sum} ${labelIntFeats.sum}")
 
-    val wordOutput =
-      if(topKPrecompute == -1)
-        accumulatePrecomputedWithBias(wordIntFeats, wordPrecomputed, wordBias)
-      else
-        accumulatePrecomputedPartialWithBias(wordIntFeats, wordPrecomputed, wordBias)
-
+    val wordOutput = accumulatePrecomputedWithBias(wordIntFeats, wordPrecomputed, wordBias)
+//      if(topKPrecompute == -1)
+//        accumulatePrecomputedWithBias(wordIntFeats, wordPrecomputed, wordBias)
+//      else
+//        accumulatePrecomputedPartialWithBias(wordIntFeats, wordPrecomputed, wordBias)
 
     val posOutput = accumulatePrecomputedWithBias(posIntFeats, posPrecomputed, posBias)
+
     val labelOutput = accumulatePrecomputedWithBias(labelIntFeats, labelPrecomputed, labelBias)
 
+//    println(s"word: ${wordOutput.oneNorm} pos: ${posOutput.oneNorm} label: ${labelOutput.oneNorm}")
+
     val combined = add(wordOutput, posOutput, labelOutput)
+
+//    println(s"add: ${combined.oneNorm}")
 
     val scores = leftMultiplyReluWithBias(outputLayer, combined, outputBias)
 

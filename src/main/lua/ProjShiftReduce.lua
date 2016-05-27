@@ -39,6 +39,9 @@ function ProjShiftReduce:parse(sentence)
             -- make feats for prediction here
             local feats = self:compute_features_chen(state)
             local decision = self:predict(feats)
+--            print("feats:", feats[1]:norm(1), feats[2]:norm(1), feats[3]:norm(1))
+--            print("word:", self.net:get(1):get(1):get(4).output:norm(1), "pos: ", self.net:get(1):get(2):get(4).output:norm(1), "label:", self.net:get(1):get(3):get(4).output:norm(1))
+--            print("add:", self.net:get(2).output:norm(1))
             local leftOrRightOrNo, shiftOrReduceOrPass, label = self:parse_decision(decision)
             if(leftOrRightOrNo ~= 0 and (state.input ~= state.parseSentenceLength+1 or not (shiftOrReduceOrPass == Constants.SHIFT and leftOrRightOrNo == Constants.NO))) then
             try {

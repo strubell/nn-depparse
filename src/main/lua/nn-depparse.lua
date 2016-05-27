@@ -526,7 +526,6 @@ local function train_model(net, criterion, train_decisions, dev_sentences, dev_d
     print(string.format("Training on %d examples (%d sentences)", num_train_examples, #train_decisions))
 
     for epoch = 1, params.num_epochs do
-        net:training()
 
         -- randomly shuffle mini batches
         local num_batches = #batches
@@ -574,7 +573,7 @@ local function train_model(net, criterion, train_decisions, dev_sentences, dev_d
         end
         print(string.format('\nEpoch error = %f', epoch_error))
         if (epoch % params.evaluate_frequency == 0 or epoch == params.num_epochs) then
-
+            net:evaluate()
             if(params.lua_eval) then
                 local accuracy = print_evaluation(net, dev_sentences, dev_decisions, parser, punct)
 
@@ -589,6 +588,7 @@ local function train_model(net, criterion, train_decisions, dev_sentences, dev_d
                 serialize_model_hdf5(net)
                 evaluate_parse_scala()
             end
+            net:training()
         end
     end
 end
