@@ -1,23 +1,20 @@
 package edu.umass.cs.iesl.nndepparse
 
-import cc.factorie.app.nlp.pos.{PennPosTag, WSJForwardPosTagger, OntonotesForwardPosTagger}
+import cc.factorie.app.nlp.pos.{OntonotesForwardPosTagger, PennPosTag, WSJForwardPosTagger}
 import cc.factorie.app.nlp.{DocumentAnnotator, Sentence}
-import cc.factorie.app.nlp.load.AutoLabel
+import cc.factorie.app.nlp.load.{AutoLabel, GoldLabel}
 import cc.factorie.util.JavaHashSet
 
 class ParseOpts extends cc.factorie.util.DefaultCmdOptions {
   val modelFile = new CmdOption("model", "", "STRING", "Serialized model in HDF5 format")
   val dataFilename = new CmdOption("data-file", "", "STRING", "Filename from which to read test data in CoNLL X one-word-per-line format.")
   val mapsDir = new CmdOption("maps-dir", "", "STRING", "Dir under which to look for existing maps to use; If empty write new maps")
-
   val lowercase = new CmdOption("lowercase", true, "BOOLEAN", "Whether to lowercase the vocab.")
   val replaceDigits = new CmdOption("replace-digits", "0", "STRING", "Replace digits with the given character (do not replace if empty string).")
-
   val test = new CmdOption("test", false, "BOOLEAN", "Test mode")
-
   val reps = new CmdOption("reps", 1, "BOOLEAN", "Number of times to evaluate test set (for timing experiments)")
-
   val posTagger = new CmdOption("postagger", "", "STRING", "pos tagger to use for timing (empty is none)")
+  val testPortion = new CmdOption("test-portion", 1.0, "DOUBLE", "Portion of test sentences to use")
 }
 
 object Parse extends App {
@@ -34,7 +31,10 @@ object Parse extends App {
   // load documents
   // todo allow loading of plain text documents
   val docs = LoadWSJStanfordDeps.fromFilename(opts.dataFilename.value, loadPos=AutoLabel)
-  val docSentences = docs.flatMap(_.sentences)
+  val allDocSentences = docs.flatMap(_.sentences)
+  val docSentences = allDocSentences.take(Math.floor(opts.testPortion.value*allDocSentences.length).toInt)
+
+  println(s"Using ${docSentences.length} test sentences")
 
   // todo get this from IntMaps
   val punctSet = Set("``", "''", ":", ".", ",")

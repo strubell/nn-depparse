@@ -25,7 +25,7 @@ then
  echo 'CP.hack does not exist, get class paths ...'
  cd $PROJ_ROOT
  echo -n "$PROJ_ROOT/target/scala-2.11/classes/:" > $PROJ_ROOT/CP.hack
- sbt "show compile:dependency-classpath" \
+ sbt -Dsbt.log.noformat=true "show compile:dependency-classpath" \
  | grep "List(Attributed" \
  | sed 's/.*List(Attributed(\(.*\)))/\1/' \
  | sed 's/), Attributed(/:/g' \

@@ -221,6 +221,10 @@ local function evaluate_parse(data, parser, punct)
     return las_correct/total, uas_correct/total, pos_correct/pos_total
 end
 
+local function evaluate_parse_scala()
+    os.execute('./bin/parse-fast.sh "" --test-portion ' .. params.test_portion)
+end
+
 local function test_feats(net, sent_data, decision_data, parser, punct)
 
     -- for readable debugging output
@@ -421,6 +425,54 @@ local function serialize_model(net, optim_state)
     end
 end
 
+local function serialize_model_hdf5(net)
+    if params.save_model ~= '' then
+        require 'hdf5'
+        local model_fname = params.save_model .. '.hd5'
+        print("Writing model to " .. model_fname)
+        local hd5_output = hdf5.open(model_fname, 'w')
+
+        -- nn.LookupTable [torch.DoubleTensor of size 34556x50]
+        local word_embeddings = net:get(1):get(1):get(1).weight
+
+        -- nn.Linear(900 -> 200) [torch.DoubleTensor of size 200x900]
+        local word_hidden = net:get(1):get(1):get(4).weight:transpose(1,2)
+        local word_bias = net:get(1):get(1):get(4).bias
+
+        -- nn.LookupTable [torch.DoubleTensor of size 47x50]
+        local pos_embeddings = net:get(1):get(2):get(1).weight
+
+        -- nn.Linear(900 -> 200) [torch.DoubleTensor of size 200x900]
+        local pos_hidden = net:get(1):get(2):get(4).weight:transpose(1,2)
+        local pos_bias = net:get(1):get(2):get(4).bias
+
+        -- nn.LookupTable [torch.DoubleTensor of size 45x50]
+        local label_embeddings = net:get(1):get(3):get(1).weight
+
+        -- nn.Linear(600 -> 200) [torch.DoubleTensor of size 200x600]
+        local label_hidden = net:get(1):get(3):get(4).weight:transpose(1,2)
+        local label_bias = net:get(1):get(3):get(4).bias
+
+        -- nn.Linear(200 -> 80) [torch.DoubleTensor of size 80x200]
+        local output_layer = net:get(4).weight:transpose(1,2)
+        local output_bias = net:get(4).bias
+
+        hd5_output:write("word_embeddings", word_embeddings)
+        hd5_output:write("label_embeddings", label_embeddings)
+        hd5_output:write("pos_embeddings", pos_embeddings)
+        hd5_output:write("word_hidden", word_hidden)
+        hd5_output:write("pos_hidden", pos_hidden)
+        hd5_output:write("label_hidden", label_hidden)
+        hd5_output:write("word_bias", word_bias)
+        hd5_output:write("pos_bias", pos_bias)
+        hd5_output:write("label_bias", label_bias)
+        hd5_output:write("output_layer", output_layer)
+        hd5_output:write("output_bias", output_bias)
+
+        hd5_output:close()
+    end
+end
+
 -- table of intmapped pos tags that correspond to punctuation (a la Chen & Manning 2014)
 local function load_punct(fname)
     local punct_table = {}
@@ -439,8 +491,6 @@ local function print_evaluation(net, test_sentences, test_decisions, parser, pun
 --    local train_accuracy = evaluate(train, net)
 --    print(string.format('Train decision accuracy: %2.2f', train_accuracy*100))
     print(string.format('Test decision accuracy: %2.2f', accuracy*100))
-
---    test_feats(net, test_sentences, test_decisions, parser, punct)
 
 
     -- for actual parsing
@@ -524,16 +574,20 @@ local function train_model(net, criterion, train_decisions, dev_sentences, dev_d
         end
         print(string.format('\nEpoch error = %f', epoch_error))
         if (epoch % params.evaluate_frequency == 0 or epoch == params.num_epochs) then
-            net:evaluate()
 
-            local accuracy = print_evaluation(net, dev_sentences, dev_decisions, parser, punct)
+            if(params.lua_eval) then
+                local accuracy = print_evaluation(net, dev_sentences, dev_decisions, parser, punct)
 
-            -- end training early if accuracy goes down
-            if params.stop_early and accuracy < last_accuracy then break else last_accuracy = accuracy end
-            -- save the trained model if location specified
-            if(accuracy > best_acc) then
-                serialize_model(net, opt_state)
-                best_acc = accuracy
+                serialize_model_hdf5(net)
+                evaluate_parse_scala()
+
+                if(accuracy > best_acc) then
+                    serialize_model(net, opt_state)
+                    best_acc = accuracy
+                end
+            else
+                serialize_model_hdf5(net)
+                evaluate_parse_scala()
             end
         end
     end
