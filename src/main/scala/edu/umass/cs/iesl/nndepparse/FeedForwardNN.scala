@@ -82,10 +82,10 @@ class FeedForwardNN(modelFile: String, featureFunc: (ParseState, Array[Int], Arr
   }
 
   // precompute first topKPrecompute word hiddens (or all if topKPrecompute == -1)
-  val topK = if(topKPrecompute <= 0) numWordEmbeddings else topKPrecompute
-  val wordPrecomputed = Array.fill(topK)(new Array[DenseTensor1](wordDomainSize))
+  val topK = if(topKPrecompute <= 0) wordDomainSize else topKPrecompute
+  val wordPrecomputed = Array.fill(numWordEmbeddings)(new Array[DenseTensor1](topK))
   i = 0
-  while(i < topK){
+  while(i < numWordEmbeddings){
     var j = 0
     val start = i*wordEmbeddingSize
     val end = start+wordEmbeddingSize
@@ -176,13 +176,14 @@ class FeedForwardNN(modelFile: String, featureFunc: (ParseState, Array[Int], Arr
     val posInput = new DenseTensor1(posHidden.dim1)
     val labelInput = new DenseTensor1(labelHidden.dim1)
 
-
     val wordIntFeats = new Array[Int](numWordEmbeddings)
     val posIntFeats = new Array[Int](numPosEmbeddings)
     val labelIntFeats = new Array[Int](numLabelEmbeddings)
 
     // compute features
     featureFunc(state, wordIntFeats, posIntFeats, labelIntFeats)
+
+//    println(s"wordIntFeats: ${wordIntFeats.mkString(" ")}")
 
     val wordOutput =
       if(topKPrecompute == -1)
