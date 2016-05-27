@@ -82,13 +82,8 @@ local opt_config = {
 local opt_state = {}
 
 local function make_lookup_table(vocab_size, embedding_size, fb)
-    local lookup_table
-    if(fb) then
-        require 'fbcunn'
-        lookup_table = nn.LookupTableGPU(vocab_size, embedding_size, false)
-    else
-        lookup_table = nn.LookupTable(vocab_size, embedding_size)
-    end
+    if(fb) then require 'fbcunn' end
+    local lookup_table = fb and nn.LookupTableGPU(vocab_size, embedding_size, false) or nn.LookupTable(vocab_size, embedding_size)
     -- initialize in range [-.01, .01]
     lookup_table.weight = torch.rand(vocab_size, embedding_size):add(-.01):mul(0.01)
     return lookup_table
@@ -226,7 +221,7 @@ local function evaluate_parse(data, parser, punct)
     return las_correct/total, uas_correct/total, pos_correct/pos_total
 end
 
-local function test_feats(feature_net, class_net, sent_data, decision_data, parser, punct)
+local function test_feats(feature_net, classet, sent_data, decision_data, parser, punct)
 
     -- hack to turn of bias in loaded model
 
