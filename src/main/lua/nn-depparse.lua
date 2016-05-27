@@ -221,9 +221,7 @@ local function evaluate_parse(data, parser, punct)
     return las_correct/total, uas_correct/total, pos_correct/pos_total
 end
 
-local function test_feats(feature_net, classet, sent_data, decision_data, parser, punct)
-
-    -- hack to turn of bias in loaded model
+local function test_feats(net, sent_data, decision_data, parser, punct)
 
     -- for readable debugging output
     local transition2string = {}
