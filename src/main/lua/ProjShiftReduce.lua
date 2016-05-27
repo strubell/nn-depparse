@@ -66,7 +66,6 @@ end
 
 function ProjShiftReduce:parse_decision(decision)
     local decision_parts = self.int2decision[decision]
---    print(decision_parts[1], decision_parts[2], decision_parts[3])
     return decision_parts[1], decision_parts[2], decision_parts[3]
 end
 

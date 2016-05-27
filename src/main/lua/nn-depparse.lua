@@ -255,11 +255,9 @@ local function test_feats(net, sent_data, decision_data, parser, punct)
         local num_gold_decisions = decisions['decisions']:size(1)
         local state = ParseState(1, 2, {}, sentence)
         local j = 1
-        while (state.input <= state.parseSentenceLength or (state.stack > 1 and state.stack <= state.parseSentenceLength)) do
+        while (state.input <= state.parseSentenceLength or state.stack > 1) do
             print(state.stack, state.input, state.parseSentenceLength, j)
-            if(state.stack < 1) then
-                state.stack = state.input
-                state.input = state.input + 1
+            if(state.stack < 1) then parser:shift(state)
             else
                 -- make feats for prediction here
                 local feats = parser:compute_features_chen(state)
@@ -308,30 +306,6 @@ local function test_feats(net, sent_data, decision_data, parser, punct)
                 end
 
                 local pred = parser.net:forward(feats)
-
---                print("embedded word:")
---                print(feature_net.modules)
-
---                print("add output:")
---                print(feature_net.modules[3].output)
-
---                print("word output:")
---                print(feature_net.modules[1].modules[1].modules[4].output)
-
---                print("word input:")
---                print(feature_net.modules[1].modules[1].modules[1].output)
-
---                                print("label output:")
---                                print(feature_net.modules[1].modules[3].output)
-
---                print("word hidden:")
---                 print(feature_net.modules[1].modules[1].modules[4].weight)
-
---                print("relu:")
---                print(feature_net.modules[4].output)
-
---                print("scores:")
---                print(class_net.modules[1].output)
                 state:print()
                 local _, decision = pred:max(2)
                 local leftOrRightOrNo, shiftOrReduceOrPass, label = parser:parse_decision(decision[1][1])
