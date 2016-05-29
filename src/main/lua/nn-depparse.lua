@@ -222,7 +222,7 @@ local function evaluate_parse(data, parser, punct)
 end
 
 local function evaluate_parse_scala()
-    os.execute('./bin/parse-fast.sh "" --test-portion ' .. params.test_portion)
+    os.execute('./bin/parse-fast.sh "" --test-portion ' .. params.test_portion .. '--model-file ' .. params.save_model)
 end
 
 local function test_feats(net, sent_data, decision_data, parser, punct)
@@ -577,8 +577,8 @@ local function train_model(net, criterion, train_decisions, dev_sentences, dev_d
             if(params.lua_eval) then
                 local accuracy = print_evaluation(net, dev_sentences, dev_decisions, parser, punct)
 
-                serialize_model_hdf5(net)
-                evaluate_parse_scala()
+--                serialize_model_hdf5(net)
+--                evaluate_parse_scala()
 
                 if(accuracy > best_acc) then
                     serialize_model(net, opt_state)

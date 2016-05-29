@@ -31,10 +31,6 @@ class FeedForwardNNParser(modelFile: String, mapsDir: String, numToPrecompute: I
   def process(s: Sentence): Sentence = {
     val parseTree = s.attr.getOrElseUpdate(new StanfordParseTree(s))
     val (heads, labels) = ProjectiveArcStandardShiftReduce.parse(new LightweightParseSentence(s), model.predict)
-    println(s.tokensString(" "))
-    println(heads.drop(1).mkString(" "))
-    println(labels.drop(1).mkString(" "))
-
     setParse(parseTree, heads, labels)
     s
   }
