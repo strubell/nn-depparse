@@ -7,13 +7,13 @@ import scala.collection.mutable.ArrayBuffer
 
 object ParseDecisionDomain extends CategoricalDomain[String]{
   import ParserConstants._
-  val defaultLabel = ParseTreeLabelDomain.defaultCategory
+  val defaultLabel = StanfordParseTreeLabelDomain.defaultCategory
   val defaultCategory = NOTHING + " " + NOTHING + " " + defaultLabel
   this += defaultCategory
 }
 
 class ParseDecision(val leftOrRightOrNo: Int, val shiftOrReduceOrPass: Int, val label: String){
-  override def toString = leftOrRightOrNo + " " + shiftOrReduceOrPass + " " + ParseTreeLabelDomain.index(label)
+  override def toString = leftOrRightOrNo + " " + shiftOrReduceOrPass + " " + StanfordParseTreeLabelDomain.index(label)
   def readableString = s"${ParserConstants(leftOrRightOrNo)} ${ParserConstants(shiftOrReduceOrPass)} $label"
 }
 

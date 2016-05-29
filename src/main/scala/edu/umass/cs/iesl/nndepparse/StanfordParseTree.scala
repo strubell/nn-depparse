@@ -8,7 +8,7 @@ import cc.factorie.variable.{LabeledCategoricalVariable, EnumDomain}
 // Representation for a dependency parse
 
 // Stanford Dependencies
-object ParseTreeLabelDomain extends EnumDomain { // this is for Stanford dependencies
+object StanfordParseTreeLabelDomain extends EnumDomain { // this is for Stanford dependencies
 val root, dep, aux, auxpass, cop, arg, agent, comp, acomp, ccomp, xcomp, obj, dobj, iobj, pobj, subj, nsubj,
 nsubjpass, csubj, csubjpass, cc, conj, expl, mod, amod, appos, advcl, det, predet, preconj, vmod, mwe, mark,
 advmod, neg, rcmod, quantmod, nn, npadvmod, tmod, num, number, prep, poss, possessive, prt, parataxis, punct,
@@ -20,17 +20,17 @@ ref, sdep, xsubj, pcomp, discourse = Value
 }
 
 // TODO I think this should instead be "ParseEdgeLabels extends LabeledCategoricalSeqVariable". -akm
-class ParseTreeLabel(val tree:ParseTree, targetValue:String = ParseTreeLabelDomain.defaultCategory) extends LabeledCategoricalVariable(targetValue) { def domain = ParseTreeLabelDomain }
+class ParseTreeLabel(val tree:StanfordParseTree, targetValue:String = StanfordParseTreeLabelDomain.defaultCategory) extends LabeledCategoricalVariable(targetValue) { def domain = StanfordParseTreeLabelDomain }
 
-object ParseTree {
+object StanfordParseTree {
   val rootIndex = -1
   val noIndex = -2
 }
 
 // TODO This initialization is really inefficient.  Fix it. -akm
-class ParseTree(val sentence:Sentence, theTargetParents:Array[Int], theTargetLabels:Array[Int]) {
-  def this(sentence:Sentence) = this(sentence, Array.fill[Int](sentence.length)(ParseTree.noIndex), Array.fill(sentence.length)(ParseTreeLabelDomain.defaultIndex)) // Note: this puts in dummy target data which may be confusing
-  def this(sentence:Sentence, theTargetParents:Seq[Int], theTargetLabels:Seq[String]) = this(sentence, theTargetParents.toArray, theTargetLabels.map(c => ParseTreeLabelDomain.index(c)).toArray)
+class StanfordParseTree(val sentence:Sentence, theTargetParents:Array[Int], theTargetLabels:Array[Int]) {
+  def this(sentence:Sentence) = this(sentence, Array.fill[Int](sentence.length)(StanfordParseTree.noIndex), Array.fill(sentence.length)(StanfordParseTreeLabelDomain.defaultIndex)) // Note: this puts in dummy target data which may be confusing
+  def this(sentence:Sentence, theTargetParents:Seq[Int], theTargetLabels:Seq[String]) = this(sentence, theTargetParents.toArray, theTargetLabels.map(c => StanfordParseTreeLabelDomain.index(c)).toArray)
   def check(parents:Array[Int]): Unit = {
     val l = parents.length; var i = 0; while (i < l) {
       require(parents(i) < l)
@@ -38,7 +38,7 @@ class ParseTree(val sentence:Sentence, theTargetParents:Array[Int], theTargetLab
     }
   }
   check(theTargetParents)
-  val _labels = theTargetLabels.map(s => {assert(ParseTreeLabelDomain.category(s) != -1, s"dep ${s} not in domain."); new ParseTreeLabel(this, ParseTreeLabelDomain.category(s))}).toArray
+  val _labels = theTargetLabels.map(s => {assert(StanfordParseTreeLabelDomain.category(s) != -1, s"dep ${s} not in domain."); new ParseTreeLabel(this, StanfordParseTreeLabelDomain.category(s))}).toArray
   val _parents = { val p = new Array[Int](theTargetParents.length); System.arraycopy(theTargetParents, 0, p, 0, p.length); p }
   val _targetParents = theTargetParents
   val _targetLabels = theTargetLabels
@@ -57,8 +57,8 @@ class ParseTree(val sentence:Sentence, theTargetParents:Array[Int], theTargetLab
   /** Make the argument the root of the tree.  This method does not prevent their being two roots. */
   def setRootChild(token:Token): Unit = setParent(token.position - sentence.start, -1)
   /** Returns the sentence position of the parent of the token at position childIndex */
-  def parentIndex(childIndex:Int): Int = if (childIndex == ParseTree.rootIndex) ParseTree.noIndex else _parents(childIndex)
-  def targetParentIndex(childIndex:Int): Int = if (childIndex == ParseTree.rootIndex) ParseTree.noIndex else _targetParents(childIndex)
+  def parentIndex(childIndex:Int): Int = if (childIndex == StanfordParseTree.rootIndex) StanfordParseTree.noIndex else _parents(childIndex)
+  def targetParentIndex(childIndex:Int): Int = if (childIndex == StanfordParseTree.rootIndex) StanfordParseTree.noIndex else _targetParents(childIndex)
   /** Returns the parent token of the token at position childIndex (or null if the token at childIndex is the root) */
   def parent(childIndex:Int): Token = {
     val idx = _parents(childIndex)
@@ -174,8 +174,8 @@ class ParseTree(val sentence:Sentence, theTargetParents:Array[Int], theTargetLab
   //def childrenOfLabel(token:Token, labelValue:DiscreteValue): Seq[Token] = childrenOfLabel(token.position - sentence.start, labelValue.intValue)
   /** Return the label on the edge from the child at sentence position 'index' to its parent. */
   def label(index:Int): ParseTreeLabel = _labels(index)
-  def copy: ParseTree = {
-    val newTree = new ParseTree(sentence, targetParents, labels.map(_.target.categoryValue))
+  def copy: StanfordParseTree = {
+    val newTree = new StanfordParseTree(sentence, targetParents, labels.map(_.target.categoryValue))
     for (i <- 0 until sentence.length) {
       newTree._parents(i) = this._parents(i)
       newTree._labels(i).set(this._labels(i).intValue)(null)
@@ -247,13 +247,13 @@ class ParseTree(val sentence:Sentence, theTargetParents:Array[Int], theTargetLab
 class ParseTreeCubbie extends Cubbie {
   val parents = IntListSlot("parents")
   val labels = StringListSlot("labels")
-  def newParseTree(s:Sentence): ParseTree = new ParseTree(s) // This will be abstract when ParseTree domain is unfixed
-  def storeParseTree(pt:ParseTree): this.type = {
+  def newParseTree(s:Sentence): StanfordParseTree = new StanfordParseTree(s) // This will be abstract when ParseTree domain is unfixed
+  def storeParseTree(pt:StanfordParseTree): this.type = {
     parents := pt.parents
     labels := pt.labels.map(_.categoryValue)
     this
   }
-  def fetchParseTree(s:Sentence): ParseTree = {
+  def fetchParseTree(s:Sentence): StanfordParseTree = {
     val pt = newParseTree(s)
     for (i <- 0 until s.length) {
       pt.setParent(i, parents.value(i))

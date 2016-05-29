@@ -12,7 +12,7 @@ class GoldPos(token: Token, value: String) extends PennPosTag(token, PennPosDoma
 object LoadWSJStanfordDeps {
 
   private def addDepInfo(s: Sentence, depInfoSeq: Seq[(Int,Int,String)]): Unit = {
-    val tree = new ParseTree(s, depInfoSeq.map(_._2), depInfoSeq.map(_._3))
+    val tree = new StanfordParseTree(s, depInfoSeq.map(_._2), depInfoSeq.map(_._3))
     s.attr += tree
   }
 
@@ -68,7 +68,7 @@ object LoadWSJStanfordDeps {
     }
     if (sentence != null && sentence.length > 0) addDepInfo(sentence, depInfoSeq)
 
-    document.sentences.foreach(s => assert(s.attr[ParseTree] != null, "Parse tree null"))
+    document.sentences.foreach(s => assert(s.attr[StanfordParseTree] != null, "Parse tree null"))
 
     println("Loaded 1 document with "+document.sentences.size+" sentences with "+document.asSection.length+" tokens total from file "+filename)
     //    document.sentences.zipWithIndex.foreach{case(s, i) => if(s.parse == null) println(s"null parse, sentence $i")}
@@ -82,7 +82,7 @@ object LoadWSJStanfordDeps {
 
   def printDocument(d: Document) =
     for (s <- d.sentences)
-      println(s.attr[ParseTree].toString() + "\n")
+      println(s.attr[StanfordParseTree].toString() + "\n")
 
   def main(args: Array[String]) =
     for (filename <- args)

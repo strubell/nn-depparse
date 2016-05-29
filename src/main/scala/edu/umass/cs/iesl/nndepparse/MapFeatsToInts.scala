@@ -71,7 +71,7 @@ object MapFeatsToInts extends App {
           val splitDecision = decision.trim.split(" ")
 
           val decisionLabel = splitDecision(2).toInt
-          val decisionLabelString = ParseTreeLabelDomain.category(decisionLabel)
+          val decisionLabelString = StanfordParseTreeLabelDomain.category(decisionLabel)
           if (!IntMaps.labelToIntMap.contains(decisionLabelString)) {
             IntMaps.labelToIntMap(decisionLabelString) = labelCounter
             labelCounter += 1

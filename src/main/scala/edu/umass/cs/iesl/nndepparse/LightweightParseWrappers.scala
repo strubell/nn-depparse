@@ -24,7 +24,7 @@ class LightweightParseSentence(s: Sentence, lowercase: Boolean = false, replaceD
   val length: Int = s.length + 1
   val _tokens: Array[LightweightParseToken] = new Array[LightweightParseToken](length-1)
   var i = 0; while(i < length-1) { _tokens(i) = new LightweightParseToken(s(i), lowercase, replaceDigits); i += 1 }
-  val parse = s.attr[ParseTree]
+  val parse = s.attr[StanfordParseTree]
   val goldHeads = Seq(-1) ++ parse._targetParents.map(_ + 1)
   val goldLabels = Seq("<ROOT-ROOT>") ++ parse._labels.map(_.target.categoryValue)
 

@@ -57,7 +57,7 @@ object MapSentsToInts extends App {
     val docSentences = docs.flatMap(_.sentences)
 
     docSentences.foreach { sentence =>
-      val parse = sentence.attr[ParseTree]
+      val parse = sentence.attr[StanfordParseTree]
       if (parse == null) println(s"Parse null in sentence: ${sentence.tokensString(" ")}")
       sentence.tokens.foreach { token =>
         val word = ParserConstants.processString(token.string, opts.lowercase.value, opts.replaceDigits.value)
