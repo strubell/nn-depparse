@@ -222,7 +222,7 @@ local function evaluate_parse(data, parser, punct)
 end
 
 local function evaluate_parse_scala()
-    os.execute('./bin/parse-fast.sh "" --test-portion ' .. params.test_portion .. ' --model ' .. params.save_model)
+    os.execute(string.format('./bin/parse-fast.sh "" --test-portion %f --model %s', params.test_portion, params.save_model .. '.hd5'))
 end
 
 local function test_feats(net, sent_data, decision_data, parser, punct)
