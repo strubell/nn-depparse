@@ -17,6 +17,7 @@ libraryDependencies ++= Seq(
   "sis" % "jhdf5_2.11" % "14.2.5-r35810"
 )
 
+publishTo := Some(Resolver.file("file",  new File(Path.userHome.absolutePath+"/.m2/repository")))
 
 lazy val execScript = taskKey[Unit]("Execute script to install jhdf5")
 

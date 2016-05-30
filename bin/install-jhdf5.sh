@@ -25,12 +25,14 @@ if [ ! -f $IVY_FILE ]; then
   printf "version := \"$LIB_VERSION\"\n\n" >> build.sbt
   printf "scalaVersion := \"2.11.7\"\n\n" >> build.sbt
   printf "packageBin in Compile := file(s\"\${organization.value}-\${name.value}-batteries_included.jar\")\n" >> build.sbt
+  printf "publishTo := Some(Resolver.file(\"file\",  new File(Path.userHome.absolutePath+\"/.m2/repository\")))" >> build.sbt
 
   if [ ! -d project ]; then
     mkdir project
   fi
   echo "sbt.version=0.13.9" > project/build.properties
   sbt publishLocal
+  sbt publish
   rm -r sis-jhdf5
   rm ${LIB_ZIP}
   cd $START_DIR
