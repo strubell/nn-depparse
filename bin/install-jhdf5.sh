@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -z "$NNDEPPARSE_ROOT" ]; then
+  export NNDEPPARSE_ROOT=`pwd` # try pwd
+fi
+
 LIB_DIR="$NNDEPPARSE_ROOT/lib"
 LIB_VERSION="14.2.5-r35810"
 LIB_URL="https://wiki-bsse.ethz.ch/download/attachments/26609237/sis-jhdf5-14.12.5-r35810.zip?version=1&modificationDate=1457264141573&api=v2"
